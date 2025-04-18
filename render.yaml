@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: pterodactyl-panel
+    plan: standard
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: RENDER_EXTERNAL_URL
+        fromService:
+          name: pterodactyl-panel
+          type: web
+          property: url
+    healthCheckPath: /
+    numInstances: 1
+    port: 10000
+
+  - type: redis
+    name: pterodactyl-cache
+    plan: standard
+
+  - type: postgres
+    name: pterodactyl-database
+    plan: standard
+    envVars:
+      - key: MYSQL_PASSWORD
+        value: Melo12345@
+      - key: MYSQL_ROOT_PASSWORD
+        value: RootMelo12345@
+      - key: MYSQL_DATABASE
+        value: panel
+      - key: MYSQL_USER
+        value: pterodactyl
