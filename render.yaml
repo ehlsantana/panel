@@ -4,28 +4,39 @@ services:
     plan: standard
     dockerfilePath: Dockerfile
     envVars:
-      - key: RENDER_EXTERNAL_URL
+      - key: APP_URL
+        generateValue: true
+      - key: DB_HOST
         fromService:
-          name: pterodactyl-panel
-          type: web
-          property: url
+          name: pterodactyl-db
+          type: postgres
+          property: host
+      - key: DB_PASSWORD
+        fromService:
+          name: pterodactyl-db
+          type: postgres
+          property: password
+      - key: DB_USERNAME
+        fromService:
+          name: pterodactyl-db
+          type: postgres
+          property: user
+      - key: DB_DATABASE
+        fromService:
+          name: pterodactyl-db
+          type: postgres
+          property: database
     healthCheckPath: /
     numInstances: 1
-    port: 10000
+    port: 8080
+
+  - type: postgres
+    name: pterodactyl-db
+    plan: standard
+    disk:
+      name: pterodactyl-disk
+      sizeGB: 10
 
   - type: redis
     name: pterodactyl-cache
     plan: standard
-
-  - type: postgres
-    name: pterodactyl-database
-    plan: standard
-    envVars:
-      - key: MYSQL_PASSWORD
-        value: Melo12345@
-      - key: MYSQL_ROOT_PASSWORD
-        value: RootMelo12345@
-      - key: MYSQL_DATABASE
-        value: panel
-      - key: MYSQL_USER
-        value: pterodactyl
