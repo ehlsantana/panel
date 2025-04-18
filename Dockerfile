@@ -1,15 +1,18 @@
 FROM ghcr.io/pterodactyl/panel:latest
 
-# L'image Pterodactyl utilise déjà les permissions correctes, pas besoin de les modifier
-# Éviter les commandes chown qui causent des erreurs
+# Configuration spécifique pour Render
+ENV APP_ENV=production
+ENV APP_DEBUG=false
+ENV CACHE_DRIVER=redis
+ENV SESSION_DRIVER=redis
+ENV QUEUE_CONNECTION=redis
 
-# Définir le répertoire de travail
-WORKDIR /var/www/html
+# Création directe de l'utilisateur admin dans l'entrypoint
+RUN echo -e '#!/bin/sh\n\
+php artisan migrate --force\n\
+php artisan p:user:make --email=lamelo2410@gmail.com --username=lionel --name-first=melo --name-last=night --password=Melo12345@ --admin=1 || true\n\
+exec "$@"' > /entrypoint.sh \
+&& chmod +x /entrypoint.sh
 
-# Commande de démarrage optimisée
-CMD ["/bin/sh", "-c", \
-    "echo 'Initialisation du panel Pterodactyl...'; \
-    sleep 15; \
-    php artisan migrate --force; \
-    php artisan p:user:make --email=lamelo2410@gmail.com --username=lionel --name-first=melo --name-last=night --password=Melo12345@ --admin=1 || true; \
-    /usr/bin/supervisord -c /etc/supervisor/supervisord.conf"]
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
