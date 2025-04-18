@@ -1,43 +1,62 @@
 FROM ghcr.io/pterodactyl/panel:latest
 
-# Install Nginx & Supervisor
+# 1. Install dependencies
 RUN apk add --no-cache nginx supervisor
 
-# Fix PHP-FPM to work with Nginx
-RUN sed -i 's/;listen.owner = www-data/listen.owner = www-data/' /usr/local/etc/php-fpm.d/www.conf && \
-    sed -i 's/;listen.group = www-data/listen.group = www-data/' /usr/local/etc/php-fpm.d/www.conf && \
-    sed -i 's/listen = 127.0.0.1:9000/listen = 0.0.0.0:9000/' /usr/local/etc/php-fpm.d/www.conf
+# 2. Create required directories first
+RUN mkdir -p /var/www/html/storage \
+    && mkdir -p /var/www/html/bootstrap/cache \
+    && mkdir -p /run/nginx \
+    && mkdir -p /var/log/supervisor
 
-# Configure Nginx
-RUN rm /etc/nginx/http.d/default.conf && \
-    echo -e 'server {\n\
-    listen 8080;\n\
-    server_name _;\n\
-    root /var/www/html/public;\n\
-    index index.php;\n\
-    location / {\n\
-        try_files \$uri \$uri/ /index.php?\$query_string;\n\
-    }\n\
-    location ~ \.php$ {\n\
-        fastcgi_pass 127.0.0.1:9000;\n\
-        fastcgi_index index.php;\n\
-        include fastcgi_params;\n\
-        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;\n\
-    }\n\
-}' > /etc/nginx/http.d/panel.conf
+# 3. Set permissions (after creating directories)
+RUN chown -R www-data:www-data /var/www/html/storage \
+    && chown -R www-data:www-data /var/www/html/bootstrap/cache
 
-# Set correct permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# 4. Configure PHP-FPM
+RUN sed -i 's/listen = .*/listen = 9000/' /usr/local/etc/php-fpm.d/www.conf \
+    && sed -i 's/;listen.owner/listen.owner/' /usr/local/etc/php-fpm.d/www.conf \
+    && sed -i 's/;listen.group/listen.group/' /usr/local/etc/php-fpm.d/www.conf
 
-# Start services via Supervisor
-RUN echo -e '[supervisord]\n\
-nodaemon=true\n\
-[program:nginx]\n\
-command=nginx -g "daemon off;"\n\
-autorestart=true\n\
-[program:php-fpm]\n\
-command=php-fpm8 -F\n\
-autorestart=true' > /etc/supervisor/supervisord.conf
+# 5. Configure Nginx
+RUN echo 'server {
+    listen 8080;
+    root /var/www/html/public;
+    index index.php;
+    
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+    
+    location ~ \.php$ {
+        fastcgi_pass 127.0.0.1:9000;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+}' > /etc/nginx/http.d/default.conf
 
-# Entrypoint
+# 6. Configure Supervisor
+RUN echo '[supervisord]
+nodaemon=true
+
+[program:nginx]
+command=nginx -g "daemon off;"
+autorestart=true
+
+[program:php-fpm]
+command=php-fpm8 -F
+autorestart=true
+' > /etc/supervisor/supervisord.conf
+
+# 7. Entrypoint script
+RUN echo '#!/bin/sh
+php artisan migrate --force
+php artisan p:user:make --email=lamelo2410@gmail.com --username=lionel --name-first=melo --name-last=night --password=Melo12345@ --admin=1 || true
+exec "$@"
+' > /entrypoint.sh && chmod +x /entrypoint.sh
+
+WORKDIR /var/www/html
+EXPOSE 8080
+
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
