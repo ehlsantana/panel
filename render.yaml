@@ -6,8 +6,6 @@ services:
     envVars:
       - key: APP_URL
         value: https://panel-hosting.onrender.com
-      - key: APP_ENV
-        value: production
       - key: DB_HOST
         fromService:
           name: pterodactyl-db
@@ -18,23 +16,5 @@ services:
           name: pterodactyl-db
           type: postgres
           property: password
-      - key: DB_USERNAME
-        fromService:
-          name: pterodactyl-db
-          type: postgres
-          property: user
-      - key: DB_DATABASE
-        fromService:
-          name: pterodactyl-db
-          type: postgres
-          property: database
-    healthCheckPath: /
-    numInstances: 1
     port: 8080
-
-  - type: postgres
-    name: pterodactyl-db
-    plan: standard
-    disk:
-      name: pterodactyl-disk
-      sizeGB: 10
+    healthCheckPath: /
