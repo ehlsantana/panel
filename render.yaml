@@ -5,7 +5,9 @@ services:
     dockerfilePath: Dockerfile
     envVars:
       - key: APP_URL
-        generateValue: true
+        value: https://panel-hosting.onrender.com
+      - key: APP_ENV
+        value: production
       - key: DB_HOST
         fromService:
           name: pterodactyl-db
@@ -26,11 +28,6 @@ services:
           name: pterodactyl-db
           type: postgres
           property: database
-      - key: REDIS_HOST
-        fromService:
-          name: pterodactyl-cache
-          type: redis
-          property: host
     healthCheckPath: /
     numInstances: 1
     port: 8080
@@ -41,7 +38,3 @@ services:
     disk:
       name: pterodactyl-disk
       sizeGB: 10
-
-  - type: redis
-    name: pterodactyl-cache
-    plan: standard
