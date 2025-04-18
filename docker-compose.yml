@@ -1,0 +1,70 @@
+version: '3.8'
+
+x-common:
+  database:
+    &db-environment
+    MYSQL_PASSWORD: &db-password "Melo12345@"
+    MYSQL_ROOT_PASSWORD: "RootMelo12345@"
+  panel:
+    &panel-environment
+    APP_URL: "https://${RENDER_EXTERNAL_URL}"
+    APP_TIMEZONE: "UTC"
+    APP_SERVICE_AUTHOR: "lamelo2410@gmail.com"
+    TRUSTED_PROXIES: "*"
+  mail:
+    &mail-environment
+    MAIL_FROM: "lamelo2410@gmail.com"
+    MAIL_DRIVER: "smtp"
+    MAIL_HOST: "smtp.mailtrap.io"
+    MAIL_PORT: "2525"
+    MAIL_USERNAME: ""
+    MAIL_PASSWORD: ""
+    MAIL_ENCRYPTION: "tls"
+
+services:
+  database:
+    image: mariadb:10.5
+    restart: always
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - database_data:/var/lib/mysql
+    environment:
+      <<: *db-environment
+      MYSQL_DATABASE: "panel"
+      MYSQL_USER: "pterodactyl"
+
+  cache:
+    image: redis:alpine
+    restart: always
+
+  panel:
+    image: ghcr.io/pterodactyl/panel:latest
+    restart: always
+    ports:
+      - "10000:80"
+    depends_on:
+      - database
+      - cache
+    volumes:
+      - panel_var:/app/var/
+      - panel_nginx:/etc/nginx/http.d/
+      - panel_certs:/etc/letsencrypt/
+      - panel_logs:/app/storage/logs
+    environment:
+      <<: [*panel-environment, *mail-environment]
+      DB_PASSWORD: *db-password
+      APP_ENV: "production"
+      APP_ENVIRONMENT_ONLY: "false"
+      CACHE_DRIVER: "redis"
+      SESSION_DRIVER: "redis"
+      QUEUE_DRIVER: "redis"
+      REDIS_HOST: "cache"
+      DB_HOST: "database"
+      DB_PORT: "3306"
+
+volumes:
+  database_data:
+  panel_var:
+  panel_nginx:
+  panel_certs:
+  panel_logs:
