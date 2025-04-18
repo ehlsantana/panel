@@ -26,6 +26,11 @@ services:
           name: pterodactyl-db
           type: postgres
           property: database
+      - key: REDIS_HOST
+        fromService:
+          name: pterodactyl-cache
+          type: redis
+          property: host
     healthCheckPath: /
     numInstances: 1
     port: 8080
