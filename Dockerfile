@@ -1,31 +1,27 @@
 FROM ghcr.io/pterodactyl/panel:latest
 
-# Create custom supervisor config
-RUN mkdir -p /etc/supervisor/conf.d && \
-    echo -e '[supervisord]\n\
+# Installation des dépendances manquantes
+RUN apk add --no-cache nginx supervisor && \
+    mkdir -p /run/nginx && \
+    mkdir -p /etc/supervisor/conf.d
+
+# Configuration Supervisor
+RUN echo -e '[supervisord]\n\
 nodaemon=true\n\
 [program:nginx]\n\
-command=/usr/sbin/nginx -g "daemon off;"\n\
-autostart=true\n\
+command=nginx -g "daemon off;"\n\
 autorestart=true\n\
-[program:php-fpm]\n\
-command=/usr/local/sbin/php-fpm --nodaemonize\n\
-autostart=true\n\
+[program:php]\n\
+command=php-fpm8 -F\n\
 autorestart=true' > /etc/supervisor/supervisord.conf
 
-# Create entrypoint script
+# Script d'initialisation
 RUN echo -e '#!/bin/sh\n\
-php artisan migrate --force\n\
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache\n\
+php artisan migrate --force --seed\n\
 php artisan p:user:make --email=lamelo2410@gmail.com --username=lionel --name-first=melo --name-last=night --password=Melo12345@ --admin=1 || true\n\
 exec "$@"' > /entrypoint.sh && \
     chmod +x /entrypoint.sh
-
-# Environment configuration
-ENV APP_ENV=production
-ENV APP_DEBUG=false
-ENV CACHE_DRIVER=redis
-ENV SESSION_DRIVER=redis
-ENV QUEUE_CONNECTION=redis
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
